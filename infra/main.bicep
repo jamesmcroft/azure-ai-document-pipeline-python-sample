@@ -1,3 +1,5 @@
+import { modelDeploymentInfo, raiPolicyInfo } from './ai_ml/ai-services.bicep'
+
 targetScope = 'subscription'
 
 @minLength(1)
@@ -18,20 +20,52 @@ param tags object = {
   Environment: 'Dev'
 }
 
-@description('Primary location for the Document Intelligence service. Default is westeurope for latest preview support.')
-param documentIntelligenceLocation string = 'westeurope'
-@description('Primary location for the OpenAI service. Default is westus3 for GPT-4 Omni support.')
-param openAILocation string = 'westus3'
+@description('Principal ID of the user that will be granted permission to access services.')
+param userPrincipalId string
+
+@description('Responsible AI policies for the Azure AI Services instance.')
+param raiPolicies raiPolicyInfo[] = [
+  {
+    name: workloadName
+    mode: 'Blocking'
+    prompt: {
+      violence: { allowedContentLevel: 'Low', blocking: true, enabled: true }
+      hate: { allowedContentLevel: 'Low', blocking: true, enabled: true }
+      sexual: { allowedContentLevel: 'Low', blocking: true, enabled: true }
+      selfharm: { allowedContentLevel: 'Low', blocking: true, enabled: true }
+      jailbreak: { blocking: true, enabled: true }
+      indirect_attack: { blocking: true, enabled: true }
+    }
+    completion: {
+      violence: { allowedContentLevel: 'Low', blocking: true, enabled: true }
+      hate: { allowedContentLevel: 'Low', blocking: true, enabled: true }
+      sexual: { allowedContentLevel: 'Low', blocking: true, enabled: true }
+      selfharm: { allowedContentLevel: 'Low', blocking: true, enabled: true }
+      protected_material_text: { blocking: true, enabled: true }
+      protected_material_code: { blocking: false, enabled: true }
+    }
+  }
+]
+
+@description('Model deployments for the Azure AI Services instance.')
+param aiServiceModelDeployments modelDeploymentInfo[] = [
+  {
+    name: 'gpt-4o'
+    model: { format: 'OpenAI', name: 'gpt-4o', version: '2024-05-13' }
+    sku: { name: 'GlobalStandard', capacity: 30 }
+    raiPolicyName: workloadName
+    versionUpgradeOption: 'OnceCurrentVersionExpired'
+  }
+]
 
 var abbrs = loadJsonContent('./abbreviations.json')
 var roles = loadJsonContent('./roles.json')
 var resourceToken = toLower(uniqueString(subscription().id, workloadName, location))
-var documentIntelligenceResourceToken = toLower(uniqueString(
-  subscription().id,
-  workloadName,
-  documentIntelligenceLocation
-))
-var openAIResourceToken = toLower(uniqueString(subscription().id, workloadName, openAILocation))
+
+resource contributor 'Microsoft.Authorization/roleDefinitions@2022-05-01-preview' existing = {
+  scope: resourceGroup
+  name: roles.general.contributor
+}
 
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: !empty(resourceGroupName) ? resourceGroupName : '${abbrs.managementGovernance.resourceGroup}${workloadName}'
@@ -49,9 +83,144 @@ module managedIdentity './security/managed-identity.bicep' = {
   }
 }
 
-resource keyVaultSecretsOfficer 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+module resourceGroupRoleAssignment './security/resource-group-role-assignment.bicep' = {
+  name: '${resourceGroup.name}-role-assignment'
   scope: resourceGroup
-  name: roles.security.keyVaultSecretsOfficer
+  params: {
+    roleAssignments: [
+      {
+        principalId: userPrincipalId
+        roleDefinitionId: contributor.id
+        principalType: 'User'
+      }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: contributor.id
+        principalType: 'ServicePrincipal'
+      }
+    ]
+  }
+}
+
+// Required RBAC roles for Azure Functions to access the storage account
+// https://learn.microsoft.com/en-us/azure/azure-functions/functions-reference?tabs=blob&pivots=programming-language-python#connecting-to-host-storage-with-an-identity
+resource storageAccountContributor 'Microsoft.Authorization/roleDefinitions@2022-05-01-preview' existing = {
+  scope: resourceGroup
+  name: roles.storage.storageAccountContributor
+}
+
+resource storageBlobDataContributor 'Microsoft.Authorization/roleDefinitions@2022-05-01-preview' existing = {
+  scope: resourceGroup
+  name: roles.storage.storageBlobDataContributor
+}
+
+resource storageBlobDataOwner 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  scope: resourceGroup
+  name: roles.storage.storageBlobDataOwner
+}
+
+resource storageFileDataPrivilegedContributor 'Microsoft.Authorization/roleDefinitions@2022-05-01-preview' existing = {
+  scope: resourceGroup
+  name: roles.storage.storageFileDataPrivilegedContributor
+}
+
+resource storageTableDataContributor 'Microsoft.Authorization/roleDefinitions@2022-05-01-preview' existing = {
+  scope: resourceGroup
+  name: roles.storage.storageTableDataContributor
+}
+
+resource storageQueueDataContributor 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  scope: resourceGroup
+  name: roles.storage.storageQueueDataContributor
+}
+
+module storageAccount './storage/storage-account.bicep' = {
+  name: '${abbrs.storage.storageAccount}${resourceToken}'
+  scope: resourceGroup
+  params: {
+    name: '${abbrs.storage.storageAccount}${resourceToken}'
+    location: location
+    tags: union(tags, {})
+    sku: {
+      name: 'Standard_LRS'
+    }
+    roleAssignments: [
+      {
+        principalId: userPrincipalId
+        roleDefinitionId: storageAccountContributor.id
+        principalType: 'User'
+      }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: storageAccountContributor.id
+        principalType: 'ServicePrincipal'
+      }
+      {
+        principalId: userPrincipalId
+        roleDefinitionId: storageBlobDataContributor.id
+        principalType: 'User'
+      }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: storageBlobDataContributor.id
+        principalType: 'ServicePrincipal'
+      }
+      {
+        principalId: userPrincipalId
+        roleDefinitionId: storageBlobDataOwner.id
+        principalType: 'User'
+      }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: storageBlobDataOwner.id
+        principalType: 'ServicePrincipal'
+      }
+      {
+        principalId: userPrincipalId
+        roleDefinitionId: storageFileDataPrivilegedContributor.id
+        principalType: 'User'
+      }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: storageFileDataPrivilegedContributor.id
+        principalType: 'ServicePrincipal'
+      }
+      {
+        principalId: userPrincipalId
+        roleDefinitionId: storageTableDataContributor.id
+        principalType: 'User'
+      }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: storageTableDataContributor.id
+        principalType: 'ServicePrincipal'
+      }
+      {
+        principalId: userPrincipalId
+        roleDefinitionId: storageQueueDataContributor.id
+        principalType: 'User'
+      }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: storageQueueDataContributor.id
+        principalType: 'ServicePrincipal'
+      }
+    ]
+  }
+}
+
+module invoicesContainer 'storage/storage-blob-container.bicep' = {
+  name: '${abbrs.storage.storageAccount}${resourceToken}-invoices'
+  scope: resourceGroup
+  params: {
+    name: 'invoices'
+    storageAccountName: storageAccount.outputs.name
+  }
+}
+
+resource keyVaultAdministrator 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  scope: resourceGroup
+  name: roles.security.keyVaultAdministrator
 }
 
 module keyVault './security/key-vault.bicep' = {
@@ -63,15 +232,25 @@ module keyVault './security/key-vault.bicep' = {
     tags: union(tags, {})
     roleAssignments: [
       {
+        principalId: userPrincipalId
+        roleDefinitionId: keyVaultAdministrator.id
+        principalType: 'User'
+      }
+      {
         principalId: managedIdentity.outputs.principalId
-        roleDefinitionId: keyVaultSecretsOfficer.id
+        roleDefinitionId: keyVaultAdministrator.id
         principalType: 'ServicePrincipal'
       }
     ]
   }
 }
 
-resource containerRegistryPull 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+resource acrPush 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  scope: resourceGroup
+  name: roles.containers.acrPush
+}
+
+resource acrPull 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
   scope: resourceGroup
   name: roles.containers.acrPull
 }
@@ -89,68 +268,23 @@ module containerRegistry 'containers/container-registry.bicep' = {
     adminUserEnabled: true
     roleAssignments: [
       {
+        principalId: userPrincipalId
+        roleDefinitionId: acrPush.id
+        principalType: 'User'
+      }
+      {
         principalId: managedIdentity.outputs.principalId
-        roleDefinitionId: containerRegistryPull.id
+        roleDefinitionId: acrPush.id
         principalType: 'ServicePrincipal'
       }
-    ]
-  }
-}
-
-resource cognitiveServicesUser 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
-  scope: resourceGroup
-  name: roles.ai.cognitiveServicesUser
-}
-
-module documentIntelligence './ai_ml/document-intelligence.bicep' = {
-  name: '${abbrs.ai.documentIntelligence}${documentIntelligenceResourceToken}'
-  scope: resourceGroup
-  params: {
-    name: '${abbrs.ai.documentIntelligence}${documentIntelligenceResourceToken}'
-    location: documentIntelligenceLocation
-    tags: union(tags, {})
-    roleAssignments: [
+      {
+        principalId: userPrincipalId
+        roleDefinitionId: acrPull.id
+        principalType: 'User'
+      }
       {
         principalId: managedIdentity.outputs.principalId
-        roleDefinitionId: cognitiveServicesUser.id
-        principalType: 'ServicePrincipal'
-      }
-    ]
-  }
-}
-
-resource cognitiveServicesOpenAIUser 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
-  scope: resourceGroup
-  name: roles.ai.cognitiveServicesOpenAIUser
-}
-
-var completionModelDeploymentName = 'gpt-4o'
-
-module openAI './ai_ml/openai.bicep' = {
-  name: '${abbrs.ai.openAIService}${openAIResourceToken}'
-  scope: resourceGroup
-  params: {
-    name: '${abbrs.ai.openAIService}${openAIResourceToken}'
-    location: openAILocation
-    tags: union(tags, {})
-    deployments: [
-      {
-        name: completionModelDeploymentName
-        model: {
-          format: 'OpenAI'
-          name: 'gpt-4o'
-          version: '2024-05-13'
-        }
-        sku: {
-          name: 'Standard'
-          capacity: 40
-        }
-      }
-    ]
-    roleAssignments: [
-      {
-        principalId: managedIdentity.outputs.principalId
-        roleDefinitionId: cognitiveServicesOpenAIUser.id
+        roleDefinitionId: acrPull.id
         principalType: 'ServicePrincipal'
       }
     ]
@@ -178,74 +312,6 @@ module applicationInsights './management_governance/application-insights.bicep' 
   }
 }
 
-// Required RBAC roles for Azure Functions to access the storage account
-// https://learn.microsoft.com/en-us/azure/azure-functions/functions-reference?tabs=blob&pivots=programming-language-csharp#connecting-to-host-storage-with-an-identity
-
-resource storageAccountContributor 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
-  scope: resourceGroup
-  name: roles.storage.storageAccountContributor
-}
-
-resource storageBlobDataContributor 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
-  scope: resourceGroup
-  name: roles.storage.storageBlobDataContributor
-}
-
-resource storageBlobDataOwner 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
-  scope: resourceGroup
-  name: roles.storage.storageBlobDataOwner
-}
-
-resource storageQueueDataContributor 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
-  scope: resourceGroup
-  name: roles.storage.storageQueueDataContributor
-}
-
-resource storageTableDataContributor 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
-  scope: resourceGroup
-  name: roles.storage.storageTableDataContributor
-}
-
-module storageAccount './storage/storage-account.bicep' = {
-  name: '${abbrs.storage.storageAccount}${resourceToken}'
-  scope: resourceGroup
-  params: {
-    name: '${abbrs.storage.storageAccount}${resourceToken}'
-    location: location
-    tags: union(tags, {})
-    sku: {
-      name: 'Standard_LRS'
-    }
-    roleAssignments: [
-      {
-        principalId: managedIdentity.outputs.principalId
-        roleDefinitionId: storageAccountContributor.id
-        principalType: 'ServicePrincipal'
-      }
-      {
-        principalId: managedIdentity.outputs.principalId
-        roleDefinitionId: storageBlobDataOwner.id
-        principalType: 'ServicePrincipal'
-      }
-      {
-        principalId: managedIdentity.outputs.principalId
-        roleDefinitionId: storageQueueDataContributor.id
-        principalType: 'ServicePrincipal'
-      }
-      {
-        principalId: managedIdentity.outputs.principalId
-        roleDefinitionId: storageTableDataContributor.id
-        principalType: 'ServicePrincipal'
-      }
-      {
-        principalId: documentIntelligence.outputs.systemIdentityPrincipalId
-        roleDefinitionId: storageBlobDataContributor.id
-        principalType: 'ServicePrincipal'
-      }
-    ]
-  }
-}
-
 module containerAppsEnvironment 'containers/container-apps-environment.bicep' = {
   name: '${abbrs.containers.containerAppsEnvironment}${resourceToken}'
   scope: resourceGroup
@@ -254,6 +320,112 @@ module containerAppsEnvironment 'containers/container-apps-environment.bicep' = 
     location: location
     tags: union(tags, {})
     logAnalyticsWorkspaceName: logAnalyticsWorkspace.outputs.name
+  }
+}
+
+resource cognitiveServicesContributor 'Microsoft.Authorization/roleDefinitions@2022-05-01-preview' existing = {
+  scope: resourceGroup
+  name: roles.ai.cognitiveServicesContributor
+}
+
+resource cognitiveServicesOpenAIContributor 'Microsoft.Authorization/roleDefinitions@2022-05-01-preview' existing = {
+  scope: resourceGroup
+  name: roles.ai.cognitiveServicesOpenAIContributor
+}
+
+module aiServices './ai_ml/ai-services.bicep' = {
+  name: '${abbrs.ai.aiServices}${resourceToken}'
+  scope: resourceGroup
+  params: {
+    name: '${abbrs.ai.aiServices}${resourceToken}'
+    location: location
+    tags: union(tags, {})
+    identityId: managedIdentity.outputs.id
+    raiPolicies: raiPolicies
+    deployments: aiServiceModelDeployments
+    roleAssignments: [
+      {
+        principalId: userPrincipalId
+        roleDefinitionId: cognitiveServicesContributor.id
+        principalType: 'User'
+      }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: cognitiveServicesContributor.id
+        principalType: 'ServicePrincipal'
+      }
+      {
+        principalId: userPrincipalId
+        roleDefinitionId: cognitiveServicesOpenAIContributor.id
+        principalType: 'User'
+      }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: cognitiveServicesOpenAIContributor.id
+        principalType: 'ServicePrincipal'
+      }
+    ]
+  }
+}
+
+resource azureMLDataScientist 'Microsoft.Authorization/roleDefinitions@2022-05-01-preview' existing = {
+  scope: resourceGroup
+  name: roles.ai.azureMLDataScientist
+}
+
+module aiHub './ai_ml/ai-hub.bicep' = {
+  name: '${abbrs.ai.aiHub}${resourceToken}'
+  scope: resourceGroup
+  params: {
+    name: '${abbrs.ai.aiHub}${resourceToken}'
+    friendlyName: 'Sample - AI Document Pipeline Hub'
+    descriptionInfo: 'Generated by the AI Document Pipeline sample project'
+    location: location
+    tags: union(tags, {})
+    identityId: managedIdentity.outputs.id
+    storageAccountId: storageAccount.outputs.id
+    keyVaultId: keyVault.outputs.id
+    applicationInsightsId: applicationInsights.outputs.id
+    containerRegistryId: containerRegistry.outputs.id
+    aiServicesName: aiServices.outputs.name
+    roleAssignments: [
+      {
+        principalId: userPrincipalId
+        roleDefinitionId: azureMLDataScientist.id
+        principalType: 'User'
+      }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: azureMLDataScientist.id
+        principalType: 'ServicePrincipal'
+      }
+    ]
+  }
+}
+
+module aiHubProject './ai_ml/ai-hub-project.bicep' = {
+  name: '${abbrs.ai.aiHubProject}${resourceToken}'
+  scope: resourceGroup
+  params: {
+    name: '${abbrs.ai.aiHubProject}${resourceToken}'
+    friendlyName: 'Sample - AI Document Pipeline Project'
+    descriptionInfo: 'Generated by the AI Document Pipeline sample project'
+    location: location
+    tags: union(tags, {})
+    identityId: managedIdentity.outputs.id
+    aiHubName: aiHub.outputs.name
+    roleAssignments: [
+      {
+        principalId: userPrincipalId
+        roleDefinitionId: azureMLDataScientist.id
+        principalType: 'User'
+      }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: azureMLDataScientist.id
+        principalType: 'ServicePrincipal'
+      }
+    ]
   }
 }
 
@@ -288,23 +460,6 @@ output containerRegistryInfo object = {
   loginServer: containerRegistry.outputs.loginServer
 }
 
-output documentIntelligenceInfo object = {
-  id: documentIntelligence.outputs.id
-  name: documentIntelligence.outputs.name
-  endpoint: documentIntelligence.outputs.endpoint
-  host: documentIntelligence.outputs.host
-  identityPrincipalId: documentIntelligence.outputs.systemIdentityPrincipalId
-}
-
-output openAIInfo object = {
-  id: openAI.outputs.id
-  name: openAI.outputs.name
-  endpoint: openAI.outputs.endpoint
-  host: openAI.outputs.host
-  completionModelDeploymentName: completionModelDeploymentName
-  visionCompletionModelDeploymentName: completionModelDeploymentName
-}
-
 output logAnalyticsWorkspaceInfo object = {
   id: logAnalyticsWorkspace.outputs.id
   name: logAnalyticsWorkspace.outputs.name
@@ -319,6 +474,7 @@ output applicationInsightsInfo object = {
 output storageAccountInfo object = {
   id: storageAccount.outputs.id
   name: storageAccount.outputs.name
+  invoicesContainerName: invoicesContainer.outputs.name
 }
 
 output containerAppsEnvironmentInfo object = {
@@ -326,4 +482,26 @@ output containerAppsEnvironmentInfo object = {
   name: containerAppsEnvironment.outputs.name
   defaultDomain: containerAppsEnvironment.outputs.defaultDomain
   staticIp: containerAppsEnvironment.outputs.staticIp
+}
+
+output aiServicesInfo object = {
+  id: aiServices.outputs.id
+  name: aiServices.outputs.name
+  endpoint: aiServices.outputs.endpoint
+  host: aiServices.outputs.host
+  openAIEndpoint: aiServices.outputs.openAIEndpoint
+  openAIHost: aiServices.outputs.openAIHost
+  modelDeploymentName: aiServiceModelDeployments[0].name
+}
+
+output aiHubInfo object = {
+  id: aiHub.outputs.id
+  name: aiHub.outputs.name
+  aiServicesConnectionName: aiHub.outputs.aiServicesConnectionName
+  openAIServicesConnectionName: aiHub.outputs.openAIServicesConnectionName
+}
+
+output aiHubProjectInfo object = {
+  id: aiHubProject.outputs.id
+  name: aiHubProject.outputs.name
 }

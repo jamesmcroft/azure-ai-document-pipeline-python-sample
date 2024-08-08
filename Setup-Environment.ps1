@@ -22,15 +22,15 @@ param
     [string]$DeploymentName,
     [Parameter(Mandatory = $true)]
     [string]$Location,
-    [Parameter(Mandatory = $true)]
-    [string]$IsLocal,
-    [Parameter(Mandatory = $true)]
-    [string]$SkipInfrastructure
+    [Parameter(Mandatory = $false)]
+    [bool]$IsLocal,
+    [Parameter(Mandatory = $false)]
+    [bool]$SkipInfrastructure
 )
 
 Write-Host "Starting environment setup..."
 
-if ($SkipInfrastructure -eq '$false' || -not (Test-Path -Path './infra/InfrastructureOutputs.json')) {
+if ($SkipInfrastructure -eq $false) {
     Write-Host "Deploying infrastructure..."
     $InfrastructureOutputs = (./infra/Deploy-Infrastructure.ps1 `
             -DeploymentName $DeploymentName `
@@ -42,10 +42,8 @@ else {
     $InfrastructureOutputs = Get-Content -Path './infra/InfrastructureOutputs.json' -Raw | ConvertFrom-Json
 }
 
-$OpenAIEndpoint = $InfrastructureOutputs.openAIInfo.value.endpoint
-$OpenAICompletionDeployment = $InfrastructureOutputs.openAIInfo.value.completionModelDeploymentName
-$OpenAIVisionCompletionDeployment = $InfrastructureOutputs.openAIInfo.value.visionCompletionModelDeploymentName
-$DocumentIntelligenceEndpoint = $InfrastructureOutputs.documentIntelligenceInfo.value.endpoint
+$OpenAIEndpoint = $InfrastructureOutputs.aiServicesInfo.value.openAIEndpoint
+$OpenAICompletionDeployment = $InfrastructureOutputs.aiServicesInfo.value.modelDeploymentName
 $StorageAccountName = $InfrastructureOutputs.storageAccountInfo.value.name
 
 Write-Host "Updating local settings..."
@@ -54,12 +52,10 @@ $LocalSettingsPath = './src/AIDocumentPipeline/local.settings.json'
 $LocalSettings = Get-Content -Path $LocalSettingsPath -Raw | ConvertFrom-Json
 $LocalSettings.Values.OPENAI_ENDPOINT = $OpenAIEndpoint
 $LocalSettings.Values.OPENAI_COMPLETION_DEPLOYMENT = $OpenAICompletionDeployment
-$LocalSettings.Values.OPENAI_VISION_COMPLETION_DEPLOYMENT = $OpenAIVisionCompletionDeployment
-$LocalSettings.Values.DOCUMENT_INTELLIGENCE_ENDPOINT = $DocumentIntelligenceEndpoint
 $LocalSettings.Values.INVOICES_STORAGE_ACCOUNT_NAME = $StorageAccountName
 $LocalSettings | ConvertTo-Json | Out-File -FilePath $LocalSettingsPath -Encoding utf8
 
-if ($IsLocal -eq '$true') {
+if ($IsLocal -eq $true) {
     Write-Host "Starting local environment..."
 
     docker-compose up

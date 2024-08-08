@@ -6,10 +6,7 @@
     "AzureWebJobsFeatureFlags": "EnableWorkerIndexing",
     "OTLP_EXPORTER_ENDPOINT": "http://localhost:14317",
     "OPENAI_ENDPOINT": "",
-    "OPENAI_EMBEDDING_DEPLOYMENT": "",
     "OPENAI_COMPLETION_DEPLOYMENT": "gpt-4o",
-    "OPENAI_VISION_COMPLETION_DEPLOYMENT": "gpt-4o",
-    "DOCUMENT_INTELLIGENCE_ENDPOINT": "",
     "MANAGED_IDENTITY_CLIENT_ID": "",
     "INVOICES_STORAGE_ACCOUNT_NAME": "UseDevelopmentStorage=true",
     "INVOICES_QUEUE_CONNECTION": "UseDevelopmentStorage=true"

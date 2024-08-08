@@ -28,7 +28,7 @@ $Location = $InfrastructureOutputs.resourceGroupInfo.value.location
 $ResourceGroupName = $InfrastructureOutputs.resourceGroupInfo.value.name
 $WorkloadName = $InfrastructureOutputs.resourceGroupInfo.value.workloadName
 $ContainerRegistryName = $InfrastructureOutputs.containerRegistryInfo.value.name
-$CompletionModelDeploymentName = $InfrastructureOutputs.openAIInfo.value.completionModelDeploymentName
+$CompletionModelDeploymentName = $InfrastructureOutputs.aiServicesInfo.value.modelDeploymentName
 
 $ContainerName = "ai-document-pipeline"
 $ContainerVersion = (Get-Date -Format "yyMMddHHmm")
@@ -45,7 +45,7 @@ Write-Host "Building ${ContainerImageName} image..."
 
 az acr login --name $ContainerRegistryName
 
-docker build -t $ContainerImageName -f ../../../src/AIDocumentPipeline/Dockerfile ../../../src/.
+docker build -t $ContainerImageName -f ../../../src/AIDocumentPipeline/Dockerfile ../../../src/AIDocumentPipeline/.
 
 Write-Host "Pushing ${ContainerImageName} image to Azure..."
 

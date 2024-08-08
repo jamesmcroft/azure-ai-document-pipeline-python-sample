@@ -15,26 +15,11 @@ param tags object = {}
 @description('Name of the container image.')
 param containerImageName string
 
-@description('Primary location for the deployed Document Intelligence service. Default is westeurope for latest preview support.')
-param documentIntelligenceLocation string = 'westeurope'
-
-@description('Location of the Azure OpenAI service for the application. Default is swedencentral.')
-param openAILocation string = 'swedencentral'
-@description('Name of the Azure OpenAI completion model for the application. Default is gpt-35-turbo.')
-param openAICompletionModelName string = 'gpt-35-turbo'
-@description('Name of the Azure OpenAI vision completion model for the application. Default is gpt-4.')
-param openAIVisionCompletionModelName string = 'gpt-4'
-@description('Name of the Azure OpenAI embedding model for the application. Default is text-embedding-ada-002.')
-param openAIEmbeddingModelName string = 'text-embedding-ada-002'
+@description('Name of the Azure OpenAI completion model for the application. Default is gpt-4o.')
+param openAICompletionModelName string = 'gpt-4o'
 
 var abbrs = loadJsonContent('../../abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, workloadName, location))
-var documentIntelligenceResourceToken = toLower(uniqueString(
-  subscription().id,
-  workloadName,
-  documentIntelligenceLocation
-))
-var openAIResourceToken = toLower(uniqueString(subscription().id, workloadName, openAILocation))
 
 resource managedIdentityRef 'Microsoft.ManagedIdentity/userAssignedIdentities@2022-01-31-preview' existing = {
   name: '${abbrs.security.managedIdentity}${resourceToken}'
@@ -52,12 +37,8 @@ resource storageAccountRef 'Microsoft.Storage/storageAccounts@2022-09-01' existi
   name: '${abbrs.storage.storageAccount}${resourceToken}'
 }
 
-resource documentIntelligenceRef 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' existing = {
-  name: '${abbrs.ai.documentIntelligence}${documentIntelligenceResourceToken}'
-}
-
-resource openAIRef 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' existing = {
-  name: '${abbrs.ai.openAIService}${openAIResourceToken}'
+resource aiServicesRef 'Microsoft.CognitiveServices/accounts@2024-04-01-preview' existing = {
+  name: '${abbrs.ai.aiServices}${resourceToken}'
 }
 
 resource containerAppsEnvironmentRef 'Microsoft.App/managedEnvironments@2023-05-01' existing = {
@@ -148,24 +129,12 @@ module containerApp '../../containers/container-app.bicep' = {
         value: managedIdentityRef.properties.clientId
       }
       {
-        name: 'DOCUMENT_INTELLIGENCE_ENDPOINT'
-        value: documentIntelligenceRef.properties.endpoint
-      }
-      {
         name: 'OPENAI_ENDPOINT'
-        value: openAIRef.properties.endpoint
+        value: aiServicesRef.properties.endpoint
       }
       {
         name: 'OPENAI_COMPLETION_MODEL_DEPLOYMENT'
         value: openAICompletionModelName
-      }
-      {
-        name: 'OPENAI_VISION_COMPLETION_MODEL_DEPLOYMENT'
-        value: openAIVisionCompletionModelName
-      }
-      {
-        name: 'OPENAI_EMBEDDING_MODEL_DEPLOYMENT'
-        value: openAIEmbeddingModelName
       }
       {
         name: 'INVOICES_STORAGE_ACCOUNT_NAME'
