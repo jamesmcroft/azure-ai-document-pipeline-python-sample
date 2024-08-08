@@ -33,7 +33,7 @@ class DocumentDataExtractor:
 
         for image_uri in image_uris:
             user_content.append({
-                "type": "image_uri",
+                "type": "image_url",
                 "image_url": {
                     "url": image_uri
                 }

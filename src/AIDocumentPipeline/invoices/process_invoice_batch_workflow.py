@@ -1,11 +1,11 @@
 from __future__ import annotations
+from invoices import extract_invoice_data_workflow
 from shared.workflow_result import WorkflowResult
 from invoices.invoice_batch_request import InvoiceBatchRequest
-from shared import config as app_config
 import azure.durable_functions as df
 import azure.functions as func
 import logging
-from invoices.activities import extract_invoice_data, get_invoice_folders
+from invoices.activities import get_invoice_folders
 
 name = "ProcessInvoiceBatchWorkflow"
 http_trigger_name = "ProcessInvoiceBatchHttp"
@@ -49,5 +49,15 @@ def run(context: df.DurableOrchestrationContext) -> WorkflowResult:
                        f"Retrieved {len(invoice_folders)} invoice folders.")
 
     # Step 4: Process the invoices in each folder.
+    extract_invoice_data_tasks = []
+    for folder in invoice_folders:
+        extract_invoice_data_task = context.call_sub_orchestrator(
+            extract_invoice_data_workflow.name, folder)
+        extract_invoice_data_tasks.append(extract_invoice_data_task)
+
+    yield context.task_all(extract_invoice_data_tasks)
+
+    for task in extract_invoice_data_tasks:
+        logging.info(f"Task {task} completed.")
 
     return result

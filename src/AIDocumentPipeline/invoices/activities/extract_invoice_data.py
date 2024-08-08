@@ -32,7 +32,7 @@ def run(input: Request) -> InvoiceData | None:
             system_prompt="You are an AI assistant that extracts data from documents and returns them as structured JSON objects. Do not return as a code block.",
             extraction_prompt=f"Extract the data from this invoice. If a value is not present, provide null. Use the following structure: {InvoiceData.empty().to_dict()}",
             endpoint=app_config.openai_endpoint,
-            deployment_name=app_config.openai_vision_completion_deployment,
+            deployment_name=app_config.openai_completion_deployment,
             max_tokens=4096,
             temperature=0.1,
             top_p=0.1
