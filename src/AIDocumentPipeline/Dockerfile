@@ -8,4 +8,8 @@ ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
 COPY requirements.txt /
 RUN pip install -r /requirements.txt
 
+RUN apt-get update \
+    && apt-get -y install --no-install-recommends \
+    poppler-utils
+
 COPY . /home/site/wwwroot

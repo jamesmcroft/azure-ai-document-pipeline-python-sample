@@ -1,0 +1,10 @@
+POST http://localhost:7071/api/invoices
+Content-Type: application/json
+
+{
+    "container_name": "invoices"
+}
+
+###
+
+GET http://localhost:7071/runtime/webhooks/durabletask/instances/8a5523ff853b47abb4ad200b9f395674?taskHub=TestHubName&connection=Storage&code=-KuA6dEVBrNDtEFmTJmSI5iALcHDRujwRNc6tocj4YiiAzFufkWiNA==
