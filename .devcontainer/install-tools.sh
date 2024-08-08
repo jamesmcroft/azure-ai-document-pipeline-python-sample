@@ -8,4 +8,5 @@ apt-get update &&
     export DEBIAN_FRONTEND=noninteractive &&
     apt-get -y install --no-install-recommends \
         poppler-utils \
-        azure-functions-core-tools-4
+        azure-functions-core-tools-4 \
+        libsecret-1-0
