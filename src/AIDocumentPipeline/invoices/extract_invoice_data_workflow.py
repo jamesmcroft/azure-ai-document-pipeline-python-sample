@@ -1,3 +1,8 @@
+"""Extract the data from the invoice files in a specific folder of a blob container.
+
+This workflow orchestrates the extraction of data from the invoice files in a specific folder and stores the extracted data back in the blob container.
+"""
+
 from __future__ import annotations
 from invoices.invoice_data import InvoiceData
 from shared.storage import write_bytes_to_blob
@@ -12,7 +17,13 @@ bp = df.Blueprint()
 
 @bp.function_name(name)
 @bp.orchestration_trigger(context_name="context", orchestration=name)
-def run(context: df.DurableOrchestrationContext) -> WorkflowResult:
+def run(context: df.DurableOrchestrationContext):
+    """Orchestrates the extraction of data from the invoice files in a specific folder and stores the extracted data back in the blob container.
+
+    :param context: The Durable Orchestration Context containing the input data for the workflow.
+    :return: The `WorkflowResult` of the workflow operation containing the validation messages and activity results.
+    """
+
     # Step 1: Extract the input from the context
     input = context.get_input()
     result = WorkflowResult(input.name)
@@ -41,4 +52,4 @@ def run(context: df.DurableOrchestrationContext) -> WorkflowResult:
                              f"Failed to store extracted data for {invoice}.")
             continue
 
-    return result
+    return result.to_dict()

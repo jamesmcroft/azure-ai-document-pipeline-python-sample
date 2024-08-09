@@ -42,20 +42,20 @@ class InvoiceData:
         ]
         return result
 
-    def to_dict(obj: InvoiceData) -> dict:
+    def to_dict(self) -> dict:
         return {
-            "invoice_number": obj.invoice_number,
-            "purchase_order_number": obj.purchase_order_number,
-            "customer_name": obj.customer_name,
-            "customer_address": obj.customer_address,
-            "delivery_date": obj.delivery_date,
-            "payable_by": obj.payable_by,
-            "products": [InvoiceProduct.to_dict(p) for p in obj.products],
-            "returns": [InvoiceProduct.to_dict(p) for p in obj.returns],
-            "total_quantity": obj.total_quantity,
-            "total_price": obj.total_price,
-            "products_signatures": [InvoiceSignature.to_dict(s) for s in obj.products_signatures],
-            "returns_signatures": [InvoiceSignature.to_dict(s) for s in obj.returns_signatures]
+            "invoice_number": self.invoice_number,
+            "purchase_order_number": self.purchase_order_number,
+            "customer_name": self.customer_name,
+            "customer_address": self.customer_address,
+            "delivery_date": self.delivery_date,
+            "payable_by": self.payable_by,
+            "products": [p.to_dict() for p in self.products],
+            "returns": [p.to_dict() for p in self.returns],
+            "total_quantity": self.total_quantity,
+            "total_price": self.total_price,
+            "products_signatures": [s.to_dict() for s in self.products_signatures],
+            "returns_signatures": [s.to_dict() for s in self.returns_signatures]
         }
 
     @staticmethod
@@ -106,14 +106,14 @@ class InvoiceProduct:
         result.reason = ""
         return result
 
-    def to_dict(obj: InvoiceProduct) -> dict:
+    def to_dict(self) -> dict:
         return {
-            "id": obj.id,
-            "description": obj.description,
-            "unit_price": obj.unit_price,
-            "quantity": obj.quantity,
-            "total": obj.total,
-            "reason": obj.reason
+            "id": self.id,
+            "description": self.description,
+            "unit_price": self.unit_price,
+            "quantity": self.quantity,
+            "total": self.total,
+            "reason": self.reason
         }
 
     @staticmethod
@@ -149,11 +149,11 @@ class InvoiceSignature:
         result.is_signed = False
         return result
 
-    def to_dict(obj: InvoiceSignature) -> dict:
+    def to_dict(self) -> dict:
         return {
-            "type": obj.type,
-            "name": obj.name,
-            "is_signed": obj.is_signed
+            "type": self.type,
+            "name": self.name,
+            "is_signed": self.is_signed
         }
 
     @staticmethod

@@ -1,3 +1,8 @@
+"""Identity helper for Azure SDK clients.
+
+This module provides a default Azure credential that can be used by Azure SDK clients to authenticate with Azure services.
+"""
+
 import os
 from azure.identity import DefaultAzureCredential
 

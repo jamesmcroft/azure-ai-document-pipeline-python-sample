@@ -1,3 +1,8 @@
+"""Environment variable configuration for the Azure Functions.
+
+This module provides a configuration object that reads environment variables from the `local.settings.json` file when running locally, and from the Azure Function App settings when running in Azure.
+"""
+
 import os
 
 otlp_exporter_endpoint = os.environ.get("OTLP_EXPORTER_ENDPOINT", None)
