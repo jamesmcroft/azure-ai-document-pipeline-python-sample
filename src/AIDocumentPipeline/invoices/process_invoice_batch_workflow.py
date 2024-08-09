@@ -27,6 +27,22 @@ async def process_invoice_batch_http(req: func.HttpRequest, client: df.DurableOr
     return client.create_check_status_response(req, instance_id)
 
 
+@bp.function_name(queue_trigger_name)
+@bp.queue_trigger(arg_name="msg", queue_name="invoices", connection="INVOICES_QUEUE_CONNECTION")
+@bp.durable_client_input(client_name="client")
+async def process_invoice_batch_queue(msg: func.QueueMessage, client: df.DurableOrchestrationClient):
+    request_body = msg.get_json()
+    invoice_batch_request = InvoiceBatchRequest.from_dict(request_body)
+
+    instance_id = await client.start_new(name, client_input=invoice_batch_request)
+
+    logging.info(f"Started workflow with instance ID: {instance_id}")
+
+    response = client.create_http_management_payload(instance_id)
+
+    logging.info(f"Response: {response}")
+
+
 @bp.function_name(name)
 @bp.orchestration_trigger(context_name="context", orchestration=name)
 def run(context: df.DurableOrchestrationContext) -> WorkflowResult:
