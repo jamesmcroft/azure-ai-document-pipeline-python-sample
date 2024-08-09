@@ -1,0 +1,6 @@
+POST http://localhost:7071/api/invoices
+Content-Type: application/json
+
+{
+    "container_name": "invoices"
+}
