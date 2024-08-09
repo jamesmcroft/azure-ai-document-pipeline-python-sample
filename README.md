@@ -142,27 +142,53 @@ To setup an environment in Azure, simply run the [Setup-Environment.ps1](./Setup
 
 ### Running the document processing pipeline
 
-Once an environment is setup, you can run the document processing pipeline by uploading a batch of documents to the Azure Storage blob container and sending a message to the Azure Storage queue containing the container reference.
+Once an environment is setup, you can run the document processing pipeline by uploading a batch of documents to the Azure Storage blob container and sending a message via a HTTP request or Azure Storage queue containing the container reference.
 
-> [!TIP]
-> Use the [Azure Storage Explorer](https://azure.microsoft.com/en-us/features/storage-explorer/) to upload the batch of documents to the Azure Storage blob container and send a message to the Azure Storage queue.
+A batch of invoices is provided in the tests [Invoice Batch folder](./tests/InvoiceBatch/) which can be uploaded into an Azure Storage blob container, locally via Azurite, or in the deployed Azure Storage account.
 
-A batch of invoices is provided in the tests [Invoice Batch folder](./tests/InvoiceBatch/) which can be uploaded into an Azure Storage blob container.
+These files can be uploaded using the Azure VS Code extension or the Azure Storage Explorer.
+
+![Azurite Local Blob Storage Upload](./assets/Local-Blob-Upload.png)
 
 > [!NOTE]
 > Upload all of the individual folders into the container, not the individual files. This sample processed a container that contains multiple folders, each representing a customer's data to be processed which may contain one or more invoices.
 
-Once uploaded, add the following message to the **invoices** queue in the Azure Storage account:
+#### Via the HTTP trigger
 
-> [!IMPORTANT]
-> When running locally, the batch must be uploaded to the deployed Azure Storage account. However, the queue message must be created in the local development storage account, Azurite, running as a Docker container. You may need to create the **invoices** queue in the local storage account first via the Azure Storage Explorer.
+To send via HTTP, open the [`tests/HttpTrigger.rest`](./tests/HttpTrigger.rest) file and use the request to trigger the pipeline.
 
-```json
+```http
+POST http://localhost:7071/api/invoices
+Content-Type: application/json
+
 {
-  "container_name": "<container-name>"
+    "container_name": "invoices"
 }
 ```
 
-![Azure Storage Explorer invoices queue](./assets/Azure-Storage-Explorer-Queue.png)
+To run in Azure, replace `http://localhost:7071` with the `containerAppInfo.value.url` value from the [`./infra/apps/AIDocumentPipeline/AppOutputs.json`](./infra/apps/AIDocumentPipeline/AppOutputs.json) file after deployment.
 
-The document processing pipeline will then be triggered, processing the batch of invoices and extracting the structured data from each invoice.
+#### Via the Azure Storage queue
+
+To send via the Azure Storage queue, run the [`tests/QueueTrigger.ps1`](./tests/QueueTrigger.ps1) PowerShell script to trigger the pipeline.
+
+This will add the following message to the **invoices** queue in the Azure Storage account, Base64 encoded:
+
+```json
+{
+  "container_name": "invoices"
+}
+```
+
+To run in Azure, replace the `az storage message put` command with the following:
+
+```powershell
+az storage message put `
+    --content $Base64EncodedMessage `
+    --queue-name "invoices" `
+    --account-name "<storage-account-name>" `
+    --auth-mode login `
+    --time-to-live 86400
+```
+
+The `--account-name` parameter should be replaced with the name of the Azure Storage account deployed in the environment found in the `storageAccountInfo.value.name` value from the [`./infra/InfrastructureOutputs.json`](./infra/InfrastructureOutputs.json) file after deployment.

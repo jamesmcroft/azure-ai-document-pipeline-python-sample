@@ -1,3 +1,5 @@
+# Start processing a batch of folders containing invoices within a Storage Container
+# Note: The following URL is for the local environment. To run in Azure, replace `http://localhost:7071` with the `containerAppInfo.value.url` value from the `./infra/apps/AIDocumentPipeline/AppOutputs.json` file.
 POST http://localhost:7071/api/invoices
 Content-Type: application/json
 
