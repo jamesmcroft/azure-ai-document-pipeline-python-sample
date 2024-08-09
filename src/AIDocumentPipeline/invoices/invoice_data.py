@@ -75,12 +75,15 @@ class InvoiceData:
         result.customer_address = obj["customer_address"]
         result.delivery_date = obj["delivery_date"]
         result.payable_by = obj["payable_by"]
-        result.products = [InvoiceProduct.from_dict(p) for p in obj["products"]]
+        result.products = [InvoiceProduct.from_dict(
+            p) for p in obj["products"]]
         result.returns = [InvoiceProduct.from_dict(p) for p in obj["returns"]]
         result.total_quantity = obj["total_quantity"]
         result.total_price = obj["total_price"]
-        result.products_signatures = [InvoiceSignature.from_dict(s) for s in obj["products_signatures"]]
-        result.returns_signatures = [InvoiceSignature.from_dict(s) for s in obj["returns_signatures"]]
+        result.products_signatures = [InvoiceSignature.from_dict(
+            s) for s in obj["products_signatures"]]
+        result.returns_signatures = [InvoiceSignature.from_dict(
+            s) for s in obj["returns_signatures"]]
         return result
 
 
@@ -141,7 +144,7 @@ class InvoiceSignature:
     @staticmethod
     def empty() -> InvoiceSignature:
         result = InvoiceSignature()
-        result.type = "Customer"
+        result.type = ""
         result.name = ""
         result.is_signed = False
         return result

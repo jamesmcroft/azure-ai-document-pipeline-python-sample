@@ -34,7 +34,7 @@ def run(input: Request) -> bool:
 
 
 class Request(BlobStorageRequest):
-    def __init__(self, storage_account_name: str, container_name: str, blob_name: str, content: bytes, overwrite: bool):
+    def __init__(self, storage_account_name: str, container_name: str, blob_name: str, content: bytes, overwrite: bool = True):
         super().__init__(storage_account_name, container_name, blob_name)
         self.content = content
         self.overwrite = overwrite

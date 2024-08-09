@@ -1,10 +1,9 @@
 from __future__ import annotations
+from invoices.invoice_data import InvoiceData
 from shared.storage import write_bytes_to_blob
 from invoices.activities import extract_invoice_data
 from shared.workflow_result import WorkflowResult
 import azure.durable_functions as df
-import azure.functions as func
-import logging
 from shared import config as app_config
 
 name = "ExtractInvoiceDataWorkflow"
@@ -35,7 +34,7 @@ def run(context: df.DurableOrchestrationContext) -> WorkflowResult:
                              f"Failed to extract data for {invoice}.")
             continue
 
-        invoice_data_stored = yield context.call_activity(write_bytes_to_blob.name, write_bytes_to_blob.Request(app_config.invoices_storage_account_name, input.container_name, f"{invoice}.Data.json", invoice_data))
+        invoice_data_stored = yield context.call_activity(write_bytes_to_blob.name, write_bytes_to_blob.Request(app_config.invoices_storage_account_name, input.container_name, f"{invoice}.Data.json", InvoiceData.to_json(invoice_data).encode("utf-8"), True))
 
         if not invoice_data_stored:
             result.add_error(write_bytes_to_blob.name,

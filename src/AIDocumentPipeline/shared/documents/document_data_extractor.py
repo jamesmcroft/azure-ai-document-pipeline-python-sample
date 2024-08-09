@@ -3,6 +3,7 @@ from pdf2image import convert_from_bytes
 import base64
 from openai import AzureOpenAI
 import json
+import io
 
 
 class DocumentDataExtractorOptions:
@@ -75,7 +76,9 @@ class DocumentDataExtractor:
 
         image_uris = []
         for page in pages:
-            base64_data = base64.b64encode(page.tobytes()).decode('utf-8')
-            image_uris.append(f"data:image/jpeg;base64,{base64_data}")
+            byteIO = io.BytesIO()
+            page.save(byteIO, format='PNG')
+            base64_data = base64.b64encode(byteIO.getvalue()).decode('utf-8')
+            image_uris.append(f"data:image/png;base64,{base64_data}")
 
         return image_uris
