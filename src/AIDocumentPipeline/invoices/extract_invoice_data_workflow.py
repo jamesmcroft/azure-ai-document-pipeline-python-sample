@@ -6,7 +6,7 @@ This workflow orchestrates the extraction of data from the invoice files in a sp
 from __future__ import annotations
 from invoices.invoice_data import InvoiceData
 from shared.storage import write_bytes_to_blob
-from invoices.activities import extract_invoice_data
+from invoices.activities import extract_invoice_data, validate_invoice_data
 from shared.workflow_result import WorkflowResult
 import azure.durable_functions as df
 from shared import config as app_config
@@ -36,7 +36,7 @@ def run(context: df.DurableOrchestrationContext):
 
     result.add_message("InvoiceFolder.validate", "input is valid")
 
-    # Step 3: Get the invoice folders from the blob container
+    # Step 3: Process each invoice file
     for invoice in input.invoice_file_names:
         invoice_data = yield context.call_activity(extract_invoice_data.name, extract_invoice_data.Request(input.container_name, invoice))
 
@@ -51,5 +51,11 @@ def run(context: df.DurableOrchestrationContext):
             result.add_error(write_bytes_to_blob.name,
                              f"Failed to store extracted data for {invoice}.")
             continue
+
+        invoice_data_validation = yield context.call_activity(validate_invoice_data.name, validate_invoice_data.Request(invoice, invoice_data))
+
+        result.merge(invoice_data_validation)
+
+        yield context.call_activity(write_bytes_to_blob.name, write_bytes_to_blob.Request(app_config.invoices_storage_account_name, input.container_name, f"{invoice}.Validation.json", WorkflowResult.to_json(invoice_data_validation).encode("utf-8"), True))
 
     return result.to_dict()
