@@ -4,7 +4,7 @@ This sample project demonstrates how to build a scalable, document data extracti
 
 This approach takes advantage of the following techniques for document data extraction:
 
-- [Using Azure OpenAI GPT-4 Omni vision capabilities to extract data from PDF files by converting them to images](https://github.com/Azure-Samples/azure-openai-gpt-4-vision-pdf-extraction-sample)
+- [Using Azure OpenAI GPT-4o to extract structured JSON data from PDF documents by converting them to images](https://github.com/Azure-Samples/azure-openai-gpt-4-vision-pdf-extraction-sample)
 
 ## Pre-requisites - Understanding
 
@@ -18,7 +18,7 @@ Before continuing with this sample, please ensure that you have a level of under
 
 ### Azure Services
 
-- [Azure OpenAI Service](https://learn.microsoft.com/en-us/azure/ai-services/openai/overview)
+- [Azure AI Services](https://learn.microsoft.com/en-us/azure/ai-services/what-are-ai-services)
 - [Azure Blob Storage](https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blobs-introduction)
 - [Azure Storage Queues](https://learn.microsoft.com/en-us/azure/storage/queues/storage-queues-introduction)
 - [Azure Container Apps](https://learn.microsoft.com/en-us/azure/azure-functions/functions-deploy-container-apps?tabs=acr%2Cbash&pivots=programming-language-csharp)
@@ -50,8 +50,8 @@ Below is an illustration of how the pipeline may integrate into an intelligent a
 
 - [**Azure Container Apps**](https://learn.microsoft.com/en-us/azure/azure-functions/functions-deploy-container-apps?tabs=acr%2Cbash&pivots=programming-language-csharp), used to host the containerized functions used in the document processing pipeline.
   - **Note**: By containerizing the functions app, you can integrate this specific orchestration pipeline into an existing microservices architecture or deploy it as a standalone service.
-- [**Azure OpenAI Service**](https://learn.microsoft.com/en-us/azure/ai-services/openai/overview), a managed service for OpenAI GPT models, deploying the latest GPT-4 Omni model to support Vision extraction techniques.
-  - **Note**: The GPT-4 Omni model is not available in all Azure OpenAI regions. For more information, see the [Azure OpenAI Service documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models#standard-deployment-model-availability).
+- [**Azure AI Services**](https://learn.microsoft.com/en-us/azure/ai-services/what-are-ai-services), a managed service for all Azure AI Services, including Azure OpenAI, deploying the latest GPT-4o model to support vision-based extraction techniques.
+  - **Note**: The GPT-4o model is not available in all Azure OpenAI regions. For more information, see the [Azure OpenAI Service documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models#standard-deployment-model-availability).
 - [**Azure Storage Account**](https://learn.microsoft.com/en-us/azure/storage/common/storage-introduction), used to store the batch of documents to be processed and the extracted data from the documents. The storage account is also used to store the queue messages for the document processing pipeline.
 - [**Azure Monitor**](https://learn.microsoft.com/en-us/azure/azure-monitor/overview), used to store logs and traces from the document processing pipeline for monitoring and troubleshooting purposes.
 - [**Azure Container Registry**](https://learn.microsoft.com/en-us/azure/container-registry/container-registry-intro), used to store the container images for the document processing pipeline service that will be consumed by Azure Container Apps.
@@ -108,15 +108,24 @@ To setup an environment locally, simply run the [Setup-Environment.ps1](./Setup-
 > [!NOTE]
 > The `-IsLocal` parameter is used to determine whether the complete containerized deployment is made in Azure, or whether to deploy the necessary components to Azure that will support a local development environment. The `-SkipInfrastructure` parameter is used to skip the deployment of the core infrastructure components if they are already deployed.
 
-When configured for local development, you will need to grant the following role-based access to your identity scoped to the specific Azure resources:
+When configured for local development, you will be granted the following role-based access to your identity scoped to the specific Azure resources:
 
 - **Azure Container Registry**:
   - **Role**: AcrPull
+  - **Role**: AcrPush
 - **Azure Storage Account**:
+  - **Role**: Storage Account Contributor
   - **Role**: Storage Blob Data Contributor
+  - **Role**: Storage File Data Privileged Contributor
+  - **Role**: Storage Table Data Contributor
   - **Role**: Storage Queue Data Contributor
+- **Azure Key Vault**:
+  - **Role**: Key Vault Administrator
 - **Azure OpenAI Service**:
-  - **Role**: Cognitive Services OpenAI User
+  - **Role**: Cognitive Services Contributor
+  - **Role**: Cognitive Services OpenAI Contributor
+- **Azure AI Hub/Project**:
+  - **Role**: Azure ML Data Scientist
 
 With the local development environment setup, you can open the solution in Visual Studio Code using the Dev Container. The Dev Container contains all the necessary tools and dependencies to run the sample project with F5 debugging support.
 

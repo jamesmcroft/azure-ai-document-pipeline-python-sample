@@ -29,18 +29,18 @@ param raiPolicies raiPolicyInfo[] = [
     name: workloadName
     mode: 'Blocking'
     prompt: {
-      violence: { allowedContentLevel: 'Low', blocking: true, enabled: true }
-      hate: { allowedContentLevel: 'Low', blocking: true, enabled: true }
-      sexual: { allowedContentLevel: 'Low', blocking: true, enabled: true }
-      selfharm: { allowedContentLevel: 'Low', blocking: true, enabled: true }
+      violence: { allowedContentLevel: 'High', blocking: true, enabled: true }
+      hate: { allowedContentLevel: 'High', blocking: true, enabled: true }
+      sexual: { allowedContentLevel: 'High', blocking: true, enabled: true }
+      selfharm: { allowedContentLevel: 'High', blocking: true, enabled: true }
       jailbreak: { blocking: true, enabled: true }
       indirect_attack: { blocking: true, enabled: true }
     }
     completion: {
-      violence: { allowedContentLevel: 'Low', blocking: true, enabled: true }
-      hate: { allowedContentLevel: 'Low', blocking: true, enabled: true }
-      sexual: { allowedContentLevel: 'Low', blocking: true, enabled: true }
-      selfharm: { allowedContentLevel: 'Low', blocking: true, enabled: true }
+      violence: { allowedContentLevel: 'High', blocking: true, enabled: true }
+      hate: { allowedContentLevel: 'High', blocking: true, enabled: true }
+      sexual: { allowedContentLevel: 'High', blocking: true, enabled: true }
+      selfharm: { allowedContentLevel: 'High', blocking: true, enabled: true }
       protected_material_text: { blocking: true, enabled: true }
       protected_material_code: { blocking: false, enabled: true }
     }
